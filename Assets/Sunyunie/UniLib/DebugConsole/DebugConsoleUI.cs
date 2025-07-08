@@ -89,7 +89,7 @@ namespace Sunyunie.UniLib
             }
             else if (matches.Count > 1)
             {
-                PrintLog($"Command List: {string.Join(", ", matches)}");
+                PrintLog($"명령어 목록: {string.Join(", ", matches)}");
             }
 
             return input;
@@ -111,11 +111,18 @@ namespace Sunyunie.UniLib
 
         private void OnInputChanged(string currentInput)
         {
+            // 입력이 없을 경우: 로그 텍스트만 보여주기
             if (string.IsNullOrWhiteSpace(currentInput))
             {
                 previewText.text = "";
+                previewText.gameObject.SetActive(false);
+                logText.gameObject.SetActive(true);
                 return;
             }
+
+            // 한 글자 이상 입력됨: preview만 보여주고 log는 숨김
+            previewText.gameObject.SetActive(true);
+            logText.gameObject.SetActive(false);
 
             var split = currentInput.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (split.Length == 0)
@@ -125,15 +132,13 @@ namespace Sunyunie.UniLib
             }
 
             string commandPart = split[0];
-
             string signature = DebugConsole.GetSignature(commandPart);
             string description = DebugConsole.GetDescription(commandPart);
-
             var matches = DebugConsole.GetMatchingCommands(commandPart);
 
             if (matches.Count == 1)
             {
-                previewText.text = $"🔹 {matches[0]}{signature} - {description}";
+                previewText.text = $">> {matches[0]}{signature} - {description}";
             }
             else if (matches.Count > 1)
             {
@@ -141,7 +146,7 @@ namespace Sunyunie.UniLib
             }
             else
             {
-                previewText.text = "";
+                previewText.text = "해당 명령어 없음";
             }
         }
 

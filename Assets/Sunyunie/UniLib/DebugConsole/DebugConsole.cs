@@ -23,7 +23,7 @@ namespace Sunyunie.UniLib
             {
                 var type = mono.GetType();
 
-                // Register fields
+                // 필드 등록한다냥!
                 foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
                 {
                     var attr = field.GetCustomAttribute<DebugCommandAttribute>();
@@ -39,7 +39,7 @@ namespace Sunyunie.UniLib
                     commandSignatures[command] = "()";
                 }
 
-                // Register methods
+                // 메서드 등록한다냥!
                 foreach (var method in type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
                 {
                     var attr = method.GetCustomAttribute<DebugCommandAttribute>();
