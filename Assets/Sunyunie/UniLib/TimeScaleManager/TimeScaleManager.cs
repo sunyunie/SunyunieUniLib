@@ -3,10 +3,6 @@ using UnityEngine;
 
 namespace Sunyunie.UniLib
 {
-    /// <summary>
-    /// TimeScale 관리 매니저.
-    /// Pause, HitStop, Bullet Time 등을 구현 예정.
-    /// </summary>
     public class TimeScaleManager : MonoBehaviour
     {
         #region 싱글톤
@@ -36,73 +32,82 @@ namespace Sunyunie.UniLib
             else
             {
                 Destroy(gameObject);
+                return;
             }
 
-            //fixedDeltaTime의 기본값을 저장
             defaultFixedDeltaTime = Time.fixedDeltaTime;
+            UpdateTimeScale(); // 초기 timeScale 설정
         }
 
         #endregion
 
         #region 변수
 
-        private Coroutine hitStopCoroutine = null; // HitStop을 위한 코루틴
-        private Coroutine bulletTimeCoroutine = null; // Bullet Time을 위한 코루틴
+        private Coroutine hitStopCoroutine = null;
+        private Coroutine bulletTimeCoroutine = null;
 
-        private float defaultFixedDeltaTime = 0.02f; // 기본 FixedDeltaTime 값
+        private float defaultFixedDeltaTime = 0.02f;
 
-        private bool isPaused = false; // 현재 일시정지 상태인지 여부
-        private bool isHitStop = false; // 현재 HitStop 상태인지 여부
-        private bool isBulletTime = false; // 현재 Bullet Time 상태인지 여부
+        private float pauseScale = 1f;
+        private float hitStopScale = 1f;
+        private float bulletTimeScale = 1f;
+
+        private bool isPaused = false;
+        private bool isHitStop = false;
+        private bool isBulletTime = false;
 
         public bool IsPaused => isPaused;
         public bool IsHitStop => isHitStop;
         public bool IsBulletTime => isBulletTime;
 
-        public bool CanSetTimeScale => !isHitStop && !isBulletTime && !isPaused; // TimeScale을 설정할 수 있는지 여부
-
         #endregion
 
         #region 지역 함수
 
-        private void SetTimeScale(float timeScale)
+        private void UpdateTimeScale()
         {
-            Time.timeScale = timeScale;
-            Time.fixedDeltaTime = defaultFixedDeltaTime * timeScale;
+            float finalScale = pauseScale * hitStopScale * bulletTimeScale;
+            Time.timeScale = finalScale;
+            Time.fixedDeltaTime = defaultFixedDeltaTime * finalScale;
         }
 
-        private IEnumerator HitStopCoroutineProcess(float _duration = 0.1f)
+        private IEnumerator HitStopCoroutineProcess(float _duration)
         {
             isHitStop = true;
-            SetTimeScale(0f); // HitStop 동안 시간 정지
+            hitStopScale = 0f;
+            UpdateTimeScale();
 
-            yield return new WaitForSecondsRealtime(_duration); // 실제 시간으로 대기
+            yield return new WaitForSecondsRealtime(_duration);
 
-            SetTimeScale(1f); // HitStop 종료 후 시간 재개
+            hitStopScale = 1f;
             isHitStop = false;
+            UpdateTimeScale();
 
-            hitStopCoroutine = null; // 코루틴 종료
+            hitStopCoroutine = null;
         }
 
-        private IEnumerator BulletTimeInCoroutineProcess(float _duration = 0.5f, float _timeScale = 0.5f, bool _useEaseInOut = true)
+        private IEnumerator BulletTimeInCoroutineProcess(float _duration, float _targetScale, bool _useEase)
         {
+            isBulletTime = true;
+
             float elapsed = 0f;
             float start = 1f;
-            float target = _timeScale;
 
             while (elapsed < _duration)
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / _duration);
-                float easedT = _useEaseInOut ? Easing.EaseInOutQuad(t) : t;
-                SetTimeScale(Mathf.Lerp(start, target, easedT));
+                float easedT = _useEase ? Easing.EaseInOutQuad(t) : t;
+                bulletTimeScale = Mathf.Lerp(start, _targetScale, easedT);
+                UpdateTimeScale();
                 yield return null;
             }
 
-            SetTimeScale(target);
+            bulletTimeScale = _targetScale;
+            UpdateTimeScale();
         }
 
-        private IEnumerator BulletTimeOutCoroutineProcess(float _duration = 0.5f, float _startTimeScale = 0.5f, bool _useEaseInOut = true)
+        private IEnumerator BulletTimeOutCoroutineProcess(float _duration, float _startScale, bool _useEase)
         {
             float elapsed = 0f;
             float target = 1f;
@@ -111,13 +116,16 @@ namespace Sunyunie.UniLib
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / _duration);
-                float easedT = _useEaseInOut ? Easing.EaseInOutQuad(t) : t;
-                SetTimeScale(Mathf.Lerp(_startTimeScale, target, easedT));
+                float easedT = _useEase ? Easing.EaseInOutQuad(t) : t;
+                bulletTimeScale = Mathf.Lerp(_startScale, target, easedT);
+                UpdateTimeScale();
                 yield return null;
             }
 
-            SetTimeScale(target);
+            bulletTimeScale = 1f;
             isBulletTime = false;
+            UpdateTimeScale();
+
             bulletTimeCoroutine = null;
         }
 
@@ -125,63 +133,43 @@ namespace Sunyunie.UniLib
 
         #region 전역 함수
 
+        [DebugCommand("pause", "일시정지")]
         public void Pause()
         {
-            if (!CanSetTimeScale)
-            {
-                return; // 일시정지할 수 없는 상태라면 무시
-            }
-
-            SetTimeScale(0f); // 일시정지 상태로 전환
-
+            if (isPaused) return;
             isPaused = true;
+            pauseScale = 0f;
+            UpdateTimeScale();
         }
 
+        [DebugCommand("unpause", "일시정지 해제")]
         public void Unpause()
         {
-            if (hitStopCoroutine != null)       StopCoroutine(hitStopCoroutine);    // HitStop 중지
-            if (bulletTimeCoroutine != null)    StopCoroutine(bulletTimeCoroutine); // Bullet Time 중지
-
-            SetTimeScale(1f); // 일시정지 해제
-
             isPaused = false;
+            pauseScale = 1f;
+            UpdateTimeScale();
         }
 
-        public void HitStop(float _duration = 0.1f)
+        [DebugCommand("hitstop", "히트스탑")]
+        public void HitStop(float duration = 0.1f)
         {
-            if (!CanSetTimeScale)
-            {
-                return; // HitStop을 설정할 수 없는 상태라면 무시
-            }
-
-            if (hitStopCoroutine != null) StopCoroutine(hitStopCoroutine); // 기존 HitStop 코루틴 중지
-
-            hitStopCoroutine = StartCoroutine(HitStopCoroutineProcess(_duration));
+            if (hitStopCoroutine != null) StopCoroutine(hitStopCoroutine);
+            hitStopCoroutine = StartCoroutine(HitStopCoroutineProcess(duration));
         }
 
-        public void StartBulletTime(float duration = 0.5f, float timeScale = 0.5f, bool useEase = true)
+        [DebugCommand("bulletin", "불릿타임 시작")]
+        public void StartBulletTime(float duration = 0.5f, float targetScale = 0.5f, bool useEase = true)
         {
-            if (!CanSetTimeScale)
-            {
-                return; // Bullet Time을 설정할 수 없는 상태라면 무시
-            }
-
             if (bulletTimeCoroutine != null) StopCoroutine(bulletTimeCoroutine);
-
-            isBulletTime = true;
-            bulletTimeCoroutine = StartCoroutine(BulletTimeInCoroutineProcess(duration, timeScale, useEase));
+            bulletTimeCoroutine = StartCoroutine(BulletTimeInCoroutineProcess(duration, targetScale, useEase));
         }
 
-        public void EndBulletTime(float duration = 0.5f, float fromTimeScale = 0.5f, bool useEase = true)
+        [DebugCommand("bulletout", "불릿타임 종료")]
+        public void EndBulletTime(float duration = 0.5f, float fromScale = 0.5f, bool useEase = true)
         {
-            if (isPaused || !isBulletTime)
-            {
-                return; // Bullet Time이 활성화되지 않았거나 일시정지 상태라면 무시
-            }
-
+            if (!isBulletTime) return;
             if (bulletTimeCoroutine != null) StopCoroutine(bulletTimeCoroutine);
-
-            bulletTimeCoroutine = StartCoroutine(BulletTimeOutCoroutineProcess(duration, fromTimeScale, useEase));
+            bulletTimeCoroutine = StartCoroutine(BulletTimeOutCoroutineProcess(duration, fromScale, useEase));
         }
 
         #endregion
