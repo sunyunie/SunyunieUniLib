@@ -5,6 +5,9 @@ using System;
 
 namespace Sunyunie.UniLib
 {
+    /// <summary>
+    /// 디버그 콘솔 UI의 간단한 구현.
+    /// </summary>
     public class DebugConsoleUI : MonoBehaviour
     {
         [Header("UI 요소")]

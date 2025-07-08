@@ -6,6 +6,9 @@ using UnityEngine;
 
 namespace Sunyunie.UniLib
 {
+    /// <summary>
+    /// 디버그 콘솔 클래스.
+    /// </summary>
     public class DebugConsole : MonoBehaviour
     {
         private static readonly Dictionary<string, Action<string[]>> commandMap = new();

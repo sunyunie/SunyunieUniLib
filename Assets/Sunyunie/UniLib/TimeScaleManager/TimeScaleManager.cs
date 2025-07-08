@@ -3,6 +3,12 @@ using UnityEngine;
 
 namespace Sunyunie.UniLib
 {
+    /// <summary>
+    /// 타임 스케일 매니저.
+    /// 일시정지, 히트스탑, 불릿타임 등을 관리합니다.
+    /// 각 기능은 DebugCommand를 통해 호출할 수 있습니다.
+    /// 각 기능은 별도의 코루틴으로 처리되며, 최종 타임 스케일로 합산되어 적용됩니다.
+    /// </summary>
     public class TimeScaleManager : MonoBehaviour
     {
         #region 싱글톤
